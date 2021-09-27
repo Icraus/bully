@@ -3,11 +3,9 @@ package com.icraus;
 import com.icraus.utils.ObservableProcess;
 import com.icraus.utils.ObservableValue;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class JProcess implements ObservableProcess, ObserverProcess {
@@ -71,7 +69,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public JProcess electCoordinator(int timeout) {
-        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING).collect(Collectors.toList());
+        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING).sorted(Comparator.comparingLong(JProcess::getPid)).collect(Collectors.toList());
         if(jProcessList.size() == 0){
             return markAsCoordinator();
         }
@@ -88,9 +86,9 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         }
         Message m = null;
         try {
-            m = electionResult.get(timeout, TimeUnit.SECONDS);
+            m = electionResult.get(timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            e.printStackTrace();
+            Logger.getAnonymousLogger().warning("Time out before Finishing.");
         }
         if(m == null){
             return markAsCoordinator();
@@ -181,4 +179,12 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         return getPid() == process.getPid();
     }
 
+    @Override
+    public String toString() {
+        return "JProcess{" +
+                "pid=" + pid +
+                ", state=" + state.getValue() +
+                ", coordinator=" + coordinator.getValue().pid +
+                '}';
+    }
 }

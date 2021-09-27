@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.instrument.UnmodifiableClassException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 class ProcessTest {
@@ -54,6 +57,7 @@ class ProcessTest {
         });
 
     }
+
     @Test
     public void testGetCoordinatorLowerProcessId(){
         JProcess p1 = createProcess(1);
@@ -71,6 +75,34 @@ class ProcessTest {
         Assertions.assertNotNull(result.getCoordinator());
         Assertions.assertEquals(p5.getPid(), result.getCoordinator().getValue().getPid());
         Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getValue().getPid());
+    }
+
+    @Test
+    public void testGetCoordinatorProcessWithEvents(){
+        JProcess p1 = createProcess(1);
+        JProcess p2 = createProcess(2, JProcess.STOPPED);
+        JProcess p3 = createProcess(3);
+        JProcess p5 = createProcess(5);
+        p5.setElectEvent((e) -> Executors.newSingleThreadExecutor().submit(()->{
+                try {
+                        Thread.sleep(7000);
+                        return new Message(e, Message.VICTORY);
+                } catch (InterruptedException interruptedException) {
+                    interruptedException.printStackTrace();
+                    return null;
+                }
+                }));
+        JProcess p18 = createProcess(18, JProcess.RUNNING);
+        p2.addPeer(p1);
+        p2.addPeer(p5);
+        p2.addPeer(p3);
+        p2.addPeer(p18);
+        p18.setState(JProcess.FAILURE);
+        JProcess result = p2.electCoordinator(1000);
+        Assertions.assertEquals(p3.getPid(), result.getPid());
+        Assertions.assertNotNull(result.getCoordinator());
+        Assertions.assertEquals(p3.getPid(), result.getCoordinator().getValue().getPid());
+        Assertions.assertEquals(p3.getPid(), p3.getCoordinator().getValue().getPid());
     }
 
 }
