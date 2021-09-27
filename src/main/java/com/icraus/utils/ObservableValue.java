@@ -15,11 +15,7 @@ public class ObservableValue<T> {
     }
 
     public void setValue(T value) {
-        if(this.value == null){
-            this.value = value;
-            return;
-        }
-        if(this.value.equals(value)){
+        if(this.value != null && this.value.equals(value)){
             return;
         }
         T oldValue = this.value;

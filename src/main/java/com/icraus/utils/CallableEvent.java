@@ -1,4 +1,4 @@
-package com.icraus;
+package com.icraus.utils;
 
 @FunctionalInterface
 public interface CallableEvent<C, T>{

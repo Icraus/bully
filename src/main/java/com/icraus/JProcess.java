@@ -1,7 +1,6 @@
 package com.icraus;
 
-import com.icraus.utils.ObservableProcess;
-import com.icraus.utils.ObservableValue;
+import com.icraus.utils.*;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -12,6 +11,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     public static final int RUNNING = 0;
     public static final int STOPPED = 1;
     public static final int FAILURE = 2;
+    private static ExecutorService threadPool = Executors.newCachedThreadPool();
 
     @Override
     public int hashCode() {
@@ -22,24 +22,20 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     private List<JProcess> peers = new ArrayList<>(); // We could have used singleton to manage the peers addition
     private ObservableValue<Integer> state = new ObservableValue<>(RUNNING);
     private ObservableValue<JProcess> coordinator = new ObservableValue<>(null);
-    private CallableEvent<JProcess, Future<Message>> electEvent;
     private CallableEvent<JProcess, Message> initElectEvent;
 
     public JProcess(long pid) {
         this.setPid(pid);
-        this.setElectEvent((p)-> CompletableFuture.completedFuture(new Message(p, Message.VICTORY)) );
         this.setInitElectEvent((p)-> {
             if(this.getState().getValue() == JProcess.RUNNING){
-                return new Message(this, Message.START_ELECT);
+                return new Message(p, Message.VICTORY);
             }
-            return new Message(this, Message.FAILED_ELECTION);
+            return new Message(p, Message.FAILED_ELECTION);
         });
-        this.coordinator.addListener(((oldValue, newValue) -> {
-            for(JProcess p: this.getPeers()){
-                if(!p.getCoordinator().getValue().equals(newValue)){
-                    p.coordinator.setValue(newValue);
-                }
-            }
+        this.getCoordinator().addListener(((oldValue, newValue) -> {
+            getPeers().parallelStream().forEach(p ->{
+                p.setCoordinator(newValue);
+            });
         }));
     }
 
@@ -69,18 +65,11 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public JProcess electCoordinator(int timeout) {
-        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING).sorted(Comparator.comparingLong(JProcess::getPid)).collect(Collectors.toList());
+        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING).sorted(Comparator.comparingLong(JProcess::getPid).reversed()).collect(Collectors.toList());
         if(jProcessList.size() == 0){
             return markAsCoordinator();
         }
-        Future<Message> electionResult = null;
-        for(JProcess process : jProcessList){
-            Message initElectMessage = process.initElect();
-            if(initElectMessage.getMessage() == Message.START_ELECT){
-                electionResult = process.elect();
-                break;
-            }
-        }
+        Future<Message> electionResult = getElectionResult(jProcessList, timeout);
         if(electionResult == null){
             return markAsCoordinator();
         }
@@ -101,18 +90,27 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         return markAsCoordinator();
     }
 
+    private Future<Message> getElectionResult(List<JProcess> jProcessList, long timeout) {
+        Future<Message> electionResult = null;
+        CompletionService<Message> ecs = new ExecutorCompletionService<>(threadPool);
+        jProcessList.stream().map(JProcess::initElect).forEach(i -> ecs.submit(()-> i));
+        try {
+            electionResult = ecs.poll(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Logger.getAnonymousLogger().warning("Interruption Occurred Here.");
+            e.printStackTrace();
+        }
+        return electionResult;
+    }
+
     private JProcess markAsCoordinator() {
         this.setCoordinator(this);
-        this.sendMessage(Message.VICTORY);
+        this.sendMessage(new Message(this, Message.VICTORY));
         return this;
     }
 
     public Message initElect(){
         return initElectEvent.execute(this);
-    }
-
-    public Future<Message> elect() {
-        return electEvent.execute(this);
     }
 
     @Override
@@ -127,15 +125,15 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     @Override
-    public void sendMessage(int message) {
+    public void sendMessage(Message message) {
         update(message);
     }
 
     @Override
-    public void update(Object message) {
-        for(JProcess p : getPeers()){
+    public void update(Message message) {
+        getPeers().parallelStream().forEach(p -> {
             p.accepts(this, message);
-        }
+        });
     }
 
     public ObservableValue<JProcess> getCoordinator() {
@@ -159,14 +157,6 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         }
     }
 
-    public CallableEvent<JProcess, Future<Message>> getElectEvent() {
-        return electEvent;
-    }
-
-    public void setElectEvent(CallableEvent<JProcess, Future<Message>> electEvent) {
-        this.electEvent = electEvent;
-    }
-
     public void setInitElectEvent(CallableEvent<JProcess, Message> initElectEvent) {
         this.initElectEvent = initElectEvent;
     }
@@ -181,10 +171,11 @@ public class JProcess implements ObservableProcess, ObserverProcess {
 
     @Override
     public String toString() {
+        Optional <JProcess> result = Optional.ofNullable(coordinator.getValue());
         return "JProcess{" +
                 "pid=" + pid +
                 ", state=" + state.getValue() +
-                ", coordinator=" + coordinator.getValue().pid +
+                ", coordinator=" + (result.isPresent() ? result.get().getPid() : "") +
                 '}';
     }
 }

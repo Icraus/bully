@@ -1,8 +1,9 @@
-package com.icraus;
+package com.icraus.utils;
+
+import com.icraus.JProcess;
 
 public class Message {
     public static final int VICTORY = 5;
-    public static final int START_ELECT = 6;
     public static final int FAILED_ELECTION = 7;
     private JProcess process;
     private int message;

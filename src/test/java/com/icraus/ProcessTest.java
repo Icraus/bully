@@ -1,15 +1,18 @@
 package com.icraus;
 
+import com.icraus.utils.Message;
+import com.icraus.utils.ObservableValue;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.lang.instrument.UnmodifiableClassException;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 
 class ProcessTest {
+    private ExecutorService executor = Executors.newSingleThreadExecutor();
+
     JProcess createProcess(int id){
         return new JProcess(id);
     }
@@ -29,7 +32,7 @@ class ProcessTest {
         p1.addPeer(p4);
         p1.addPeer(p5);
         p5.setState(JProcess.FAILURE);
-        JProcess result = p1.electCoordinator(5);
+        JProcess result = p1.electCoordinator(5000);
         Assertions.assertEquals(p1.getPid(), result.getPid());
         Assertions.assertNotNull(result.getCoordinator());
         Assertions.assertEquals(p1.getPid(), result.getCoordinator().getValue().getPid());
@@ -55,7 +58,6 @@ class ProcessTest {
             JProcess p2 = createProcess(2, JProcess.FAILURE);
             p1.getPeers().add(p2);
         });
-
     }
 
     @Test
@@ -83,15 +85,15 @@ class ProcessTest {
         JProcess p2 = createProcess(2, JProcess.STOPPED);
         JProcess p3 = createProcess(3);
         JProcess p5 = createProcess(5);
-        p5.setElectEvent((e) -> Executors.newSingleThreadExecutor().submit(()->{
-                try {
-                        Thread.sleep(7000);
-                        return new Message(e, Message.VICTORY);
-                } catch (InterruptedException interruptedException) {
-                    interruptedException.printStackTrace();
-                    return null;
-                }
-                }));
+        p5.setInitElectEvent((e) -> {
+            try {
+                Thread.sleep(7000);
+                return new Message(e, Message.VICTORY);
+            } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+                return null;
+            }
+        });
         JProcess p18 = createProcess(18, JProcess.RUNNING);
         p2.addPeer(p1);
         p2.addPeer(p5);
@@ -103,6 +105,36 @@ class ProcessTest {
         Assertions.assertNotNull(result.getCoordinator());
         Assertions.assertEquals(p3.getPid(), result.getCoordinator().getValue().getPid());
         Assertions.assertEquals(p3.getPid(), p3.getCoordinator().getValue().getPid());
+        ObservableValue<JProcess> cord = p18.getCoordinator();
+        Assertions.assertEquals(p3.getPid(), cord.getValue().getPid());
     }
+    @Test
+    public void testCoordinateWithStateListener(){
+        JProcess p1 = createProcess(1);
+        JProcess p2 = createProcess(2);
+        JProcess p3 = createProcess(3);
+        JProcess p5 = createProcess(5);
+        p5.setInitElectEvent((e) -> {
+            try {
+                Thread.sleep(7000);
+                return new Message(e, Message.VICTORY);
+            } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+                return null;
+            }
+        });
+        JProcess p18 = createProcess(18, JProcess.RUNNING);
+        p2.addPeer(p1);
+        p2.addPeer(p5);
+        p2.addPeer(p3);
+        p2.addPeer(p18);
 
+        JProcess result = p2.electCoordinator(3000);
+        Assertions.assertEquals(p18.getPid(), result.getPid());
+        Assertions.assertNotNull(result.getCoordinator());
+        Assertions.assertEquals(p18.getPid(), result.getCoordinator().getValue().getPid());
+        Assertions.assertEquals(p18.getPid(), p3.getCoordinator().getValue().getPid());
+        ObservableValue<JProcess> cord = p18.getCoordinator();
+        Assertions.assertEquals(p18.getPid(), cord.getValue().getPid());
+    }
 }
