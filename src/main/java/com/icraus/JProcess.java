@@ -1,10 +1,12 @@
 package com.icraus;
 
 import com.icraus.utils.ObservableProcess;
+import com.icraus.utils.ObservableValue;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -13,17 +15,38 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     public static final int STOPPED = 1;
     public static final int FAILURE = 2;
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(getPid());
+    }
+
     private long pid;
-    private List<JProcess> peers = new ArrayList<>(); // We could have used singleton to manage the peers addation
-    private int state = RUNNING;
-    private JProcess coordinator = null;
+    private List<JProcess> peers = new ArrayList<>(); // We could have used singleton to manage the peers addition
+    private ObservableValue<Integer> state = new ObservableValue<>(RUNNING);
+    private ObservableValue<JProcess> coordinator = new ObservableValue<>(null);
+    private CallableEvent<JProcess, Future<Message>> electEvent;
+    private CallableEvent<JProcess, Message> initElectEvent;
 
     public JProcess(long pid) {
         this.setPid(pid);
+        this.setElectEvent((p)-> CompletableFuture.completedFuture(new Message(p, Message.VICTORY)) );
+        this.setInitElectEvent((p)-> {
+            if(this.getState().getValue() == JProcess.RUNNING){
+                return new Message(this, Message.START_ELECT);
+            }
+            return new Message(this, Message.FAILED_ELECTION);
+        });
+        this.coordinator.addListener(((oldValue, newValue) -> {
+            for(JProcess p: this.getPeers()){
+                if(!p.getCoordinator().getValue().equals(newValue)){
+                    p.coordinator.setValue(newValue);
+                }
+            }
+        }));
     }
 
     public JProcess(int pid, int state) {
-        this.setPid(pid);
+        this(pid);
         this.setState(state);
     }
 
@@ -32,7 +55,11 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public void setState(int state) {
-        this.state = state;
+        this.state.setValue(state);
+    }
+
+    public ObservableValue<Integer> getState() {
+        return state;
     }
 
     public long getPid() {
@@ -44,7 +71,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public JProcess electCoordinator(int timeout) {
-        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState() == RUNNING).collect(Collectors.toList());
+        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING).collect(Collectors.toList());
         if(jProcessList.size() == 0){
             return markAsCoordinator();
         }
@@ -52,7 +79,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         for(JProcess process : jProcessList){
             Message initElectMessage = process.initElect();
             if(initElectMessage.getMessage() == Message.START_ELECT){
-                electionResult = process.elect(timeout);
+                electionResult = process.elect();
                 break;
             }
         }
@@ -83,18 +110,11 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public Message initElect(){
-        if(this.getState() == JProcess.RUNNING){
-            return new Message(this, Message.START_ELECT);
-        }
-        return new Message(this, Message.FAILED_ELECTION);
+        return initElectEvent.execute(this);
     }
 
-    public Future<Message> elect(int timeout) {
-        return CompletableFuture.completedFuture(new Message(this, Message.VICTORY));
-    }
-
-    public int getState() {
-        return state;
+    public Future<Message> elect() {
+        return electEvent.execute(this);
     }
 
     @Override
@@ -104,7 +124,6 @@ public class JProcess implements ObservableProcess, ObserverProcess {
            switch (msg){
                case Message.VICTORY:
                    this.setCoordinator((JProcess) observableProcess);
-
            }
         }
     }
@@ -121,12 +140,12 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         }
     }
 
-    public JProcess getCoordinator() {
+    public ObservableValue<JProcess> getCoordinator() {
         return coordinator;
     }
 
     public void setCoordinator(JProcess coordinator) {
-        this.coordinator = coordinator;
+        this.coordinator.setValue(coordinator);
     }
 
     public void addPeer(JProcess p) {
@@ -141,4 +160,25 @@ public class JProcess implements ObservableProcess, ObserverProcess {
             peer.addPeer(p);
         }
     }
+
+    public CallableEvent<JProcess, Future<Message>> getElectEvent() {
+        return electEvent;
+    }
+
+    public void setElectEvent(CallableEvent<JProcess, Future<Message>> electEvent) {
+        this.electEvent = electEvent;
+    }
+
+    public void setInitElectEvent(CallableEvent<JProcess, Message> initElectEvent) {
+        this.initElectEvent = initElectEvent;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        JProcess process = (JProcess) o;
+        return getPid() == process.getPid();
+    }
+
 }

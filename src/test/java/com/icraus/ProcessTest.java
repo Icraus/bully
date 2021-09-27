@@ -29,8 +29,8 @@ class ProcessTest {
         JProcess result = p1.electCoordinator(5);
         Assertions.assertEquals(p1.getPid(), result.getPid());
         Assertions.assertNotNull(result.getCoordinator());
-        Assertions.assertEquals(p1.getPid(), result.getCoordinator().getPid());
-        Assertions.assertEquals(p1.getPid(), p4.getCoordinator().getPid());
+        Assertions.assertEquals(p1.getPid(), result.getCoordinator().getValue().getPid());
+        Assertions.assertEquals(p1.getPid(), p4.getCoordinator().getValue().getPid());
     }
     @Test
     public void testAddPeers(){
@@ -47,7 +47,7 @@ class ProcessTest {
     }
     @Test
     public void testWillThrowExceptionOnEditList(){
-        Assertions.assertThrows(UnmodifiableClassException.class, ()->{
+        Assertions.assertThrows(UnsupportedOperationException.class, ()->{
             JProcess p1 = createProcess(1);
             JProcess p2 = createProcess(2, JProcess.FAILURE);
             p1.getPeers().add(p2);
@@ -57,7 +57,7 @@ class ProcessTest {
     @Test
     public void testGetCoordinatorLowerProcessId(){
         JProcess p1 = createProcess(1);
-        JProcess p2 = createProcess(2, JProcess.FAILURE);
+        JProcess p2 = createProcess(2, JProcess.STOPPED);
         JProcess p3 = createProcess(3);
         JProcess p5 = createProcess(5);
         JProcess p18 = createProcess(18, JProcess.RUNNING);
@@ -69,8 +69,8 @@ class ProcessTest {
         JProcess result = p2.electCoordinator(5);
         Assertions.assertEquals(p5.getPid(), result.getPid());
         Assertions.assertNotNull(result.getCoordinator());
-        Assertions.assertEquals(p5.getPid(), result.getCoordinator().getPid());
-        Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getPid());
+        Assertions.assertEquals(p5.getPid(), result.getCoordinator().getValue().getPid());
+        Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getValue().getPid());
     }
 
 }
