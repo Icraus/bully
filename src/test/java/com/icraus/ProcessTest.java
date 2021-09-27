@@ -100,7 +100,7 @@ class ProcessTest {
         p2.addPeer(p3);
         p2.addPeer(p18);
         p18.setState(JProcess.FAILURE);
-        JProcess result = p2.electCoordinator(1000);
+        JProcess result = p2.electCoordinator(4000);
         Assertions.assertEquals(p3.getPid(), result.getPid());
         Assertions.assertNotNull(result.getCoordinator());
         Assertions.assertEquals(p3.getPid(), result.getCoordinator().getValue().getPid());
@@ -116,7 +116,7 @@ class ProcessTest {
         JProcess p5 = createProcess(5);
         p5.setInitElectEvent((e) -> {
             try {
-                Thread.sleep(7000);
+                Thread.sleep(2000);
                 return new Message(e, Message.VICTORY);
             } catch (InterruptedException interruptedException) {
                 interruptedException.printStackTrace();
@@ -136,5 +136,12 @@ class ProcessTest {
         Assertions.assertEquals(p18.getPid(), p3.getCoordinator().getValue().getPid());
         ObservableValue<JProcess> cord = p18.getCoordinator();
         Assertions.assertEquals(p18.getPid(), cord.getValue().getPid());
+        p18.getState().addListener(((oldValue, newValue) -> {
+            if(newValue != JProcess.RUNNING){
+                p1.electCoordinator(5000);
+            }
+        }));
+        p18.setState(JProcess.FAILURE);
+        Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getValue().getPid());
     }
 }

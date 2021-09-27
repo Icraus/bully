@@ -33,7 +33,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
             return new Message(p, Message.FAILED_ELECTION);
         });
         this.getCoordinator().addListener(((oldValue, newValue) -> {
-            getPeers().parallelStream().forEach(p ->{
+            getPeers().forEach(p ->{
                 p.setCoordinator(newValue);
             });
         }));
@@ -65,41 +65,41 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public JProcess electCoordinator(int timeout) {
-        List<JProcess> jProcessList = getPeers().parallelStream().filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING).sorted(Comparator.comparingLong(JProcess::getPid).reversed()).collect(Collectors.toList());
+        List<JProcess> jProcessList = getPeers().stream()
+                .filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING)
+                .sorted(Comparator.comparingLong(JProcess::getPid)
+                        .reversed())
+                .collect(Collectors.toList());
         if(jProcessList.size() == 0){
             return markAsCoordinator();
         }
-        Future<Message> electionResult = getElectionResult(jProcessList, timeout);
+        Message electionResult = getElectionResult(jProcessList, timeout);
         if(electionResult == null){
             return markAsCoordinator();
         }
-        Message m = null;
-        try {
-            m = electionResult.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            Logger.getAnonymousLogger().warning("Time out before Finishing.");
-        }
-        if(m == null){
-            return markAsCoordinator();
-        }
-        if(m.getMessage() == Message.VICTORY){
-            m.getProcess().markAsCoordinator();
-            this.setCoordinator(m.getProcess());
-            return m.getProcess();
+
+        if(electionResult.getMessage() == Message.VICTORY){
+            electionResult.getProcess().markAsCoordinator();
+            this.setCoordinator(electionResult.getProcess());
+            return electionResult.getProcess();
         }
         return markAsCoordinator();
     }
 
-    private Future<Message> getElectionResult(List<JProcess> jProcessList, long timeout) {
-        Future<Message> electionResult = null;
-        CompletionService<Message> ecs = new ExecutorCompletionService<>(threadPool);
-        jProcessList.stream().map(JProcess::initElect).forEach(i -> ecs.submit(()-> i));
-        try {
-            electionResult = ecs.poll(timeout, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Logger.getAnonymousLogger().warning("Interruption Occurred Here.");
-            e.printStackTrace();
-        }
+    private Message getElectionResult(List<JProcess> jProcessList, long timeout) {
+        List<Future<Message>> futureList = jProcessList.stream().map(p -> threadPool.submit(() -> p.initElect())).collect(Collectors.toList());
+        Message electionResult = futureList.parallelStream().map(f -> {
+            try {
+                return f.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                Logger.getAnonymousLogger().warning("Interruption Occurred Here.");
+                e.printStackTrace();
+                return new Message(null, Message.FAILED_ELECTION);
+            }
+        }).filter(m -> m != null && m.getMessage() == Message.VICTORY)
+                .sorted(Comparator.comparingLong((Message value) -> value.getProcess().getPid()).reversed())
+                .findFirst()
+                .orElse(new Message(this, Message.VICTORY));
         return electionResult;
     }
 
@@ -131,7 +131,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
 
     @Override
     public void update(Message message) {
-        getPeers().parallelStream().forEach(p -> {
+        getPeers().forEach(p -> {
             p.accepts(this, message);
         });
     }
