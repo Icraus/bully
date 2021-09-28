@@ -26,6 +26,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           tag: ${{ github.ref }}
-          file: ./release/*.jar
+          file: ./build/libs/*.jar
           overwrite: true
           file_glob: true
