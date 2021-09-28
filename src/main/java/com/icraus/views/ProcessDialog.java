@@ -30,7 +30,7 @@ public class ProcessDialog  extends JDialog {
         pidTextField = new TextField("" + currentProcess.getPid());
         panel.add(pidTextField);
         panel.add(new JLabel("Timeout"));
-        timeoutTextField = createIntTextField();
+        timeoutTextField = View.createIntTextField();
         timeoutTextField.setValue(process.getTimeout());
         panel.add(timeoutTextField);
         panel.add(new JLabel("State"));
@@ -69,16 +69,6 @@ public class ProcessDialog  extends JDialog {
         });
         add(buttonPanel, BorderLayout.SOUTH);
         setSize(200, 200);
-    }
-    private JFormattedTextField createIntTextField(){
-        NumberFormat format = NumberFormat.getInstance();
-        NumberFormatter formatter = new NumberFormatter(format);
-        formatter.setValueClass(Integer.class);
-        formatter.setMinimum(0);
-        formatter.setMaximum(Integer.MAX_VALUE);
-        formatter.setAllowsInvalid(false);
-        // If you want the value to be committed on each keystroke instead of focus lost
-        return new JFormattedTextField(formatter);
     }
 
 }

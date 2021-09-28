@@ -15,6 +15,16 @@ public class View extends JFrame {
     private final JButton cancelButton;
     private Controller controller = Controller.getController();
     private int timeout = 3000;
+
+    public static JFormattedTextField createIntTextField(){
+        NumberFormat format = NumberFormat.getInstance();
+        NumberFormatter formatter = new NumberFormatter(format);
+        formatter.setValueClass(Integer.class);
+        formatter.setMinimum(0);
+        formatter.setMaximum(Integer.MAX_VALUE);
+        formatter.setAllowsInvalid(false);
+        return new JFormattedTextField(formatter);
+    }
     View() {
         setTitle("Process");
         setVisible(true);
@@ -29,7 +39,7 @@ public class View extends JFrame {
         setLayout(layout);
         add(panel, BorderLayout.CENTER);
         okButton = new JButton("Ok");
-        cancelButton = new JButton("Cancel");
+        cancelButton = new JButton("Start Election");
         JPanel buttonPanel = new JPanel();
         timeoutTextField = createIntTextField();
         timeoutTextField.setValue(timeout);
@@ -46,18 +56,8 @@ public class View extends JFrame {
             repaint();
         });
     }
-    private JFormattedTextField createIntTextField(){
-        NumberFormat format = NumberFormat.getInstance();
-        NumberFormatter formatter = new NumberFormatter(format);
-        formatter.setValueClass(Integer.class);
-        formatter.setMinimum(0);
-        formatter.setMaximum(Integer.MAX_VALUE);
-        formatter.setAllowsInvalid(false);
-        return new JFormattedTextField(formatter);
-    }
 
     public int getTimeout() {
-        System.out.println(timeout);
         return timeout;
     }
 

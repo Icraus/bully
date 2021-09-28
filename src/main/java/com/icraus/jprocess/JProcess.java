@@ -96,7 +96,6 @@ public class JProcess implements ObservableProcess, ObserverProcess {
                 return f.get(timeout, TimeUnit.MILLISECONDS);
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 Logger.getAnonymousLogger().warning("Interruption Occurred Here.");
-                e.printStackTrace();
                 return new Message(null, Message.FAILED_ELECTION);
             }
         }).filter(m -> m != null && m.getMessage() == Message.VICTORY)
