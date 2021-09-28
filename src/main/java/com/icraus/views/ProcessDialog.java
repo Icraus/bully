@@ -20,7 +20,8 @@ public class ProcessDialog  extends JDialog {
     private JProcess currentProcess;
     final String[] states = {"Running", "Stopped", "Failed", "New"};
     private final String[] messages = {"VICTORY", "REQUEST_DATA", "FAILED_ELECTION", "REQUEST_ELECTION"};
-    ProcessDialog(ProcessComponent process){
+
+    public ProcessDialog(ProcessComponent process){
         currentProcess = process.getProcess();
         JPanel panel = new JPanel();
         setLayout(new BorderLayout());

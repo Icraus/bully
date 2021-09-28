@@ -13,13 +13,6 @@ public class Controller {
         return controller;
     }
     protected Controller() {
-        mainProcess = createProcess();
-        addNewProcess(createProcess());
-        addNewProcess(createProcess());
-        addNewProcess(createProcess());
-        addNewProcess(createProcess());
-        addNewProcess(createProcess());
-        mainProcess.electCoordinator(4000);
     }
 
     public JProcess getMainProcess() {
@@ -46,10 +39,15 @@ public class Controller {
         this.electionWaitTime = electionWaitTime;
     }
     public JProcess createProcess(){
-        JProcess process = new JProcess(PID_COUNTER++);
+
+        return createProcess(PID_COUNTER++, electionWaitTime);
+    }
+
+    public JProcess createProcess(long pid, int waitTime){
+        JProcess process = new JProcess(pid);
         process.setInitElectEvent(p -> {
             try {
-                Thread.sleep(electionWaitTime);
+                Thread.sleep(waitTime);
                 return new Message(p, Message.VICTORY);
             } catch (InterruptedException interruptedException) {
                 interruptedException.printStackTrace();
@@ -58,4 +56,5 @@ public class Controller {
         });
         return process;
     }
+
 }
