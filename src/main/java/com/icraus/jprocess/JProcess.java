@@ -1,4 +1,4 @@
-package com.icraus;
+package com.icraus.jprocess;
 
 import com.icraus.utils.*;
 
@@ -11,6 +11,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     public static final int RUNNING = 0;
     public static final int STOPPED = 1;
     public static final int FAILURE = 2;
+    public static final int NEW = 3;
     private static ExecutorService threadPool = Executors.newCachedThreadPool();
 
     @Override
@@ -114,13 +115,17 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     @Override
-    public void accepts(ObservableProcess observableProcess, Object message) {
-        if(message.getClass() == Integer.class){
-           int msg = (Integer) message;
-           switch (msg){
-               case Message.VICTORY:
-                   this.setCoordinator((JProcess) observableProcess);
-           }
+    public void accepts(ObservableProcess observableProcess, Message message) {
+       switch (message.getMessage()){
+           case Message.VICTORY:
+                this.setCoordinator((JProcess) observableProcess);
+                break;
+           case Message.REQUEST_DATA:
+               break;
+           case Message.REQUEST_ELECTION:
+               JProcess callingProcess = (JProcess) observableProcess;
+               callingProcess.electCoordinator(1000);
+               break;
         }
     }
 
@@ -132,7 +137,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     @Override
     public void update(Message message) {
         getPeers().forEach(p -> {
-            p.accepts(this, message);
+                p.accepts(this, message);
         });
     }
 
