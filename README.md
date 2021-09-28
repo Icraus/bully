@@ -54,3 +54,8 @@
 - Double click on the process icon to change its status.
 
 ![img.png](img.png)
+
+## Known bugs
+
+- Due to java thread timing issues u might find some issues in the election and timeout
+  if that happened just lower the time of the running process less than the exact needed time.
