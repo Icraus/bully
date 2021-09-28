@@ -36,8 +36,10 @@ public class View extends JFrame {
         okButton = new JButton("Ok");
         cancelButton = new JButton("Start Election");
         JPanel buttonPanel = new JPanel();
+        JLabel label = new JLabel("Timeout");
         timeoutTextField = createIntTextField();
         timeoutTextField.setValue(timeout);
+        buttonPanel.add(label);
         buttonPanel.add(timeoutTextField);
         buttonPanel.add(okButton);
         buttonPanel.add(cancelButton);

@@ -24,7 +24,7 @@
     │   ├───java
     │   │   └───com
     │   │       └───icraus
-    │   │           ├───jprocess
+    │   │           ├───jprocess/JProcess.java contains the algorthim implementation.
     │   │           ├───utils
     │   │           └───views
     │   └───resources
