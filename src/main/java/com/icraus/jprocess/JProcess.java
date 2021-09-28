@@ -13,7 +13,6 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     public static final int FAILURE = 2;
     public static final int NEW = 3;
     private static ExecutorService threadPool = Executors.newCachedThreadPool();
-
     @Override
     public int hashCode() {
         return Objects.hash(getPid());
@@ -66,6 +65,9 @@ public class JProcess implements ObservableProcess, ObserverProcess {
     }
 
     public JProcess electCoordinator(int timeout) {
+        if(getState().getValue() != JProcess.RUNNING){
+            return getPeers().stream().filter(process -> process.getState().getValue() == JProcess.RUNNING).findFirst().orElseThrow().electCoordinator(timeout);
+        }
         List<JProcess> jProcessList = getPeers().stream()
                 .filter(p -> p.getPid() > this.getPid() && p.getState().getValue() == RUNNING)
                 .sorted(Comparator.comparingLong(JProcess::getPid)
@@ -110,7 +112,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
         return this;
     }
 
-    public Message initElect(){
+    private Message initElect(){
         return initElectEvent.execute(this);
     }
 
@@ -128,7 +130,6 @@ public class JProcess implements ObservableProcess, ObserverProcess {
                break;
         }
     }
-
     @Override
     public void sendMessage(Message message) {
         update(message);
@@ -157,6 +158,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
             return;
         }
         this.peers.add(p);
+        p.addPeer(this);
         for(JProcess peer: this.getPeers()){
             peer.addPeer(p);
         }
@@ -182,5 +184,8 @@ public class JProcess implements ObservableProcess, ObserverProcess {
                 ", state=" + state.getValue() +
                 ", coordinator=" + (result.isPresent() ? result.get().getPid() : "") +
                 '}';
+    }
+    public boolean isCoordinator(){
+        return this.equals(getCoordinator().getValue());
     }
 }

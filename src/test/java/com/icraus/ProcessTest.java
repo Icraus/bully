@@ -143,5 +143,45 @@ class ProcessTest {
         }));
         p18.setState(JProcess.FAILURE);
         Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getValue().getPid());
+        Assertions.assertTrue(p5.isCoordinator());
+        Assertions.assertFalse(p2.isCoordinator());
+    }
+    @Test
+    public void testCoordinateWithBadState(){
+        JProcess p1 = createProcess(1);
+        JProcess p2 = createProcess(2);
+        JProcess p3 = createProcess(3);
+        JProcess p5 = createProcess(5);
+        p5.setInitElectEvent((e) -> {
+            try {
+                Thread.sleep(2000);
+                return new Message(e, Message.VICTORY);
+            } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+                return null;
+            }
+        });
+        JProcess p18 = createProcess(18, JProcess.FAILURE);
+        p2.addPeer(p1);
+        p2.addPeer(p5);
+        p2.addPeer(p3);
+        p2.addPeer(p18);
+
+        JProcess result = p18.electCoordinator(3000);
+        Assertions.assertEquals(p5.getPid(), result.getPid());
+        Assertions.assertNotNull(result.getCoordinator());
+        Assertions.assertEquals(p5.getPid(), result.getCoordinator().getValue().getPid());
+        Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getValue().getPid());
+        ObservableValue<JProcess> cord = p18.getCoordinator();
+        Assertions.assertEquals(p5.getPid(), cord.getValue().getPid());
+        p18.getState().addListener(((oldValue, newValue) -> {
+            if(newValue != JProcess.RUNNING){
+                p1.electCoordinator(5000);
+            }
+        }));
+        p18.setState(JProcess.FAILURE);
+        Assertions.assertEquals(p5.getPid(), p3.getCoordinator().getValue().getPid());
+        Assertions.assertTrue(p5.isCoordinator());
+        Assertions.assertFalse(p2.isCoordinator());
     }
 }
