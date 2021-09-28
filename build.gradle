@@ -1,7 +1,8 @@
 plugins {
     id 'java'
+    id 'application'
 }
-
+mainClassName = 'com.icraus.views.UIMain'
 group 'com.icraus'
 version '1.0-SNAPSHOT'
 
@@ -17,4 +18,12 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+jar {
+    manifest {
+        attributes(
+                'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+                'Main-Class': mainClassName
+        )
+    }
 }

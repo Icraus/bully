@@ -7,5 +7,7 @@ import javax.swing.*;
 public class UIMain {
     public static void main(String[] args) {
         View v = new View();
+        v.setVisible(true);
+
     }
 }

@@ -27,7 +27,6 @@ public class View extends JFrame {
     }
     View() {
         setTitle("Process");
-        setVisible(true);
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(3, 2));
         panel.add(new ProcessComponent(controller.getMainProcess(), this));
