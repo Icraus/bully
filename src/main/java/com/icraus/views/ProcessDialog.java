@@ -4,23 +4,24 @@ import com.icraus.jprocess.JProcess;
 import com.icraus.utils.Message;
 
 import javax.swing.*;
+import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.NumberFormat;
 
 public class ProcessDialog  extends JDialog {
     private final JButton okButton;
     private final JButton cancelButton;
     private final TextField pidTextField;
-    private final TextField timeoutTextField;
+    private final JFormattedTextField timeoutTextField;
     private final JComboBox statesComboBox;
     private final JComboBox messageComboBox;
     private JProcess currentProcess;
     final String[] states = {"Running", "Stopped", "Failed", "New"};
     private final String[] messages = {"VICTORY", "REQUEST_DATA", "FAILED_ELECTION", "REQUEST_ELECTION"};
-    static int PID_COUNTER = 0;
-    ProcessDialog(JProcess process){
-        currentProcess = process;
+    ProcessDialog(ProcessComponent process){
+        currentProcess = process.getProcess();
         JPanel panel = new JPanel();
         setLayout(new BorderLayout());
         add(panel, BorderLayout.CENTER);
@@ -29,7 +30,8 @@ public class ProcessDialog  extends JDialog {
         pidTextField = new TextField("" + currentProcess.getPid());
         panel.add(pidTextField);
         panel.add(new JLabel("Timeout"));
-        timeoutTextField = new TextField("1000");
+        timeoutTextField = createIntTextField();
+        timeoutTextField.setValue(process.getTimeout());
         panel.add(timeoutTextField);
         panel.add(new JLabel("State"));
         statesComboBox = new JComboBox(states);
@@ -43,22 +45,20 @@ public class ProcessDialog  extends JDialog {
         okButton = new JButton("Ok");
         cancelButton = new JButton("Cancel");
         buttonPanel.add(okButton);
-        okButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        okButton.addActionListener(e -> {
                 currentProcess.setState(statesComboBox.getSelectedIndex());
+                int timeout = (Integer)timeoutTextField.getValue();
+                process.setTimeout(timeout);
                 currentProcess.setInitElectEvent(p -> {
                     try {
-                        Thread.sleep(Integer.parseInt(timeoutTextField.getText()));
-                        return new Message(p, messageComboBox.getSelectedIndex() % 5);
+                        Thread.sleep(process.getTimeout());
+                        return new Message(p, messageComboBox.getSelectedIndex() % 5 + 5);
                     } catch (InterruptedException interruptedException) {
                         interruptedException.printStackTrace();
                         return new Message(p, Message.FAILED_ELECTION);
                     }
                 });
-                System.out.println("HEllo world");
                 setVisible(false);
-            }
         });
         buttonPanel.add(cancelButton);
         cancelButton.addActionListener(new ActionListener() {
@@ -70,6 +70,15 @@ public class ProcessDialog  extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
         setSize(200, 200);
     }
-
+    private JFormattedTextField createIntTextField(){
+        NumberFormat format = NumberFormat.getInstance();
+        NumberFormatter formatter = new NumberFormatter(format);
+        formatter.setValueClass(Integer.class);
+        formatter.setMinimum(0);
+        formatter.setMaximum(Integer.MAX_VALUE);
+        formatter.setAllowsInvalid(false);
+        // If you want the value to be committed on each keystroke instead of focus lost
+        return new JFormattedTextField(formatter);
+    }
 
 }

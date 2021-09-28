@@ -11,19 +11,26 @@ import java.awt.geom.Ellipse2D;
 public class ProcessComponent extends JPanel {
     private JProcess process;
     private View currentView;
+    private int timeout = 3000;
+
     ProcessComponent(JProcess process, View v){
         setOpaque(true);
         this.process = process;
         this.process.getState().addListener((oldValue, newValue) -> {
+            if(newValue != JProcess.RUNNING && process.isCoordinator()){
+                process.electCoordinator(v.getTimeout());
+                currentView.repaint();
+            }
             repaint();
         });
         currentView = v;
+        ProcessComponent currentComponent = this;
         this.addMouseListener(new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if(e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2){
                     SwingUtilities.invokeLater(() ->{
-                        ProcessDialog processDialog = new ProcessDialog(getProcess());
+                        ProcessDialog processDialog = new ProcessDialog(currentComponent);
                         processDialog.setVisible(true);
                     });
                 }
@@ -76,7 +83,6 @@ public class ProcessComponent extends JPanel {
         g2d.drawString(process.getPid() + "", 15, 15);
         if(process.isCoordinator()){
             g2d.drawString("The Coordinator", 20, 30);
-
         }
     }
 
@@ -86,5 +92,13 @@ public class ProcessComponent extends JPanel {
 
     public void setProcess(JProcess process) {
         this.process = process;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
     }
 }

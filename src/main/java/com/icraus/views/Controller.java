@@ -7,39 +7,19 @@ public class Controller {
     private JProcess mainProcess;
     private static Controller controller = new Controller();
     private int electionWaitTime = 3000;
+    static int PID_COUNTER = 0;
+
     public static Controller getController(){
         return controller;
     }
     protected Controller() {
-        JProcess p = new JProcess(0);
-        JProcess p2 = new JProcess(2);
-        JProcess p3 = new JProcess(3);
-        addNewProcess(new JProcess(4));
-        addNewProcess(new JProcess(5));
-        addNewProcess(new JProcess(6));
-        JProcess p16 = new JProcess(20);
-        p3.setInitElectEvent(pr ->{
-            try{
-                Thread.sleep(10000);
-                return new Message(pr, Message.VICTORY);
-            }catch (Exception e){
-                return new Message(pr, Message.FAILED_ELECTION);
-            }
-        });
-        JProcess p18 = new JProcess(18);
-        p18.setInitElectEvent(pr ->{
-            try{
-                Thread.sleep(2000);
-                return new Message(pr, Message.VICTORY);
-            }catch (Exception e){
-                return new Message(pr, Message.FAILED_ELECTION);
-            }
-        });
-        addNewProcess(p);
-        addNewProcess(p2);
-        addNewProcess(p3);
-        addNewProcess(p18);
-        p.electCoordinator(4000);
+        mainProcess = createProcess();
+        addNewProcess(createProcess());
+        addNewProcess(createProcess());
+        addNewProcess(createProcess());
+        addNewProcess(createProcess());
+        addNewProcess(createProcess());
+        mainProcess.electCoordinator(4000);
     }
 
     public JProcess getMainProcess() {
@@ -64,5 +44,18 @@ public class Controller {
 
     public void setElectionWaitTime(int electionWaitTime) {
         this.electionWaitTime = electionWaitTime;
+    }
+    public JProcess createProcess(){
+        JProcess process = new JProcess(PID_COUNTER++);
+        process.setInitElectEvent(p -> {
+            try {
+                Thread.sleep(electionWaitTime);
+                return new Message(p, Message.VICTORY);
+            } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+                return new Message(p, Message.FAILED_ELECTION);
+            }
+        });
+        return process;
     }
 }

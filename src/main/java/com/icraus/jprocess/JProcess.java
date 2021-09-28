@@ -91,7 +91,7 @@ public class JProcess implements ObservableProcess, ObserverProcess {
 
     private Message getElectionResult(List<JProcess> jProcessList, long timeout) {
         List<Future<Message>> futureList = jProcessList.stream().map(p -> threadPool.submit(() -> p.initElect())).collect(Collectors.toList());
-        Message electionResult = futureList.parallelStream().map(f -> {
+        Message electionResult = futureList.stream().map(f -> {
             try {
                 return f.get(timeout, TimeUnit.MILLISECONDS);
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
